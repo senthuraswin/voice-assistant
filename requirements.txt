@@ -1,0 +1,6 @@
+pipecat-ai[openai]
+python-dotenv
+aiohttp
+openai
+pyaudio
+websockets
