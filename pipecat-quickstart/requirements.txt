@@ -1,7 +1,0 @@
-# Runtime requirements for the quickstart hello bot
-python-dotenv
-loguru
-requests
-elevenlabs
-deepgram-sdk
-pipecat-ai

@@ -29,9 +29,8 @@ from pipecat.processors.frame_processor import FrameProcessor
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIObserver, RTVIProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
-from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.services.elevenlabs import ElevenLabsTTSService
-from pipecat.frames.frames import ErrorFrame
+from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
 
@@ -67,77 +66,12 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # Speech-to-Text (Deepgram)
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
-    # Text-to-Speech (ElevenLabs) with robust fallback handling.
-    ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-    ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
-
-    def make_error_pusher(msg: str):
-        class ErrorPusher(FrameProcessor):
-            async def process_frame(self, frame: Frame, direction):
-                await super().process_frame(frame, direction)
-                logger.error(msg)
-                await self.push_frame(ErrorFrame(error=msg, fatal=False, processor=self))
-
-        return ErrorPusher()
-
-    tts = None
-
-    if ELEVENLABS_API_KEY:
-        # Try ElevenLabs with retries and a voice-id fallback
-        attempts = 0
-        max_attempts = 3
-        last_exc = None
-        tried_default_voice = False
-        while attempts < max_attempts:
-            attempts += 1
-            try:
-                logger.info(f"Attempting ElevenLabs TTS (attempt {attempts}) with voice '{ELEVENLABS_VOICE_ID}'")
-                tts = ElevenLabsTTSService(api_key=ELEVENLABS_API_KEY, voice_id=ELEVENLABS_VOICE_ID, model_id="eleven_turbo_v2")
-                logger.info("✅ ElevenLabs TTS initialized")
-                break
-            except Exception as e:
-                last_exc = e
-                msg = str(e).lower()
-                logger.warning(f"ElevenLabs TTS init failed (attempt {attempts}): {e}")
-                # If voice not found or handshake/wss issue, try default Rachel voice once
-                if ("voice does not exist" in msg or "voice does not exist" in str(e) or "handshake" in msg or "websocket" in msg) and not tried_default_voice:
-                    tried_default_voice = True
-                    ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM")
-                    logger.warning(f"Retrying ElevenLabs with default voice id '{ELEVENLABS_VOICE_ID}'")
-                    awaitable_delay = 0.5
-                    try:
-                        import time
-
-                        time.sleep(awaitable_delay)
-                    except Exception:
-                        pass
-                    continue
-                # backoff before retry
-                try:
-                    import time
-
-                    time.sleep(0.5 * attempts)
-                except Exception:
-                    pass
-
-        if tts is None:
-            logger.error(f"ElevenLabs TTS unavailable: {last_exc}")
-
-    if tts is None:
-        # Try Cartesia fallback if available
-        try:
-            from pipecat.services.cartesia.tts import CartesiaTTSService
-
-            cart_api = os.getenv("CARTESIA_API_KEY")
-            if cart_api:
-                logger.info("Falling back to Cartesia TTS")
-                tts = CartesiaTTSService(api_key=cart_api, voice_id=os.getenv("CARTESIA_VOICE_ID", "71a7ad14-091c-4e8e-a314-022ece01c121"))
-            else:
-                logger.error("Cartesia API key missing; cannot fallback to Cartesia TTS")
-                tts = make_error_pusher("No TTS available: ElevenLabs failed and Cartesia API key missing")
-        except Exception as e:
-            logger.error(f"Cartesia fallback not available: {e}")
-            tts = make_error_pusher(f"No TTS available: ElevenLabs failed ({last_exc}) and Cartesia unavailable ({e})")
+    # Text-to-Speech (ElevenLabs)
+    tts = ElevenLabsTTSService(
+        api_key=os.getenv("ELEVENLABS_API_KEY"),
+        voice_id="Xtbu4DbP3EiktnAlnmbX",  # Rachel - default free voice
+        model_id="eleven_turbo_v2" # Faster model for better streaming
+    )
 
     # Our simple hello logic - NO OpenAI needed!
     hello_processor = HelloProcessor()
