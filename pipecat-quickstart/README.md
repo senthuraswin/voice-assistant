@@ -13,6 +13,41 @@ Build and deploy your first voice AI bot in under 10 minutes. Develop locally, t
 - Python 3.10 or later
 - [uv](https://docs.astral.sh/uv/getting-started/installation/) package manager installed
 
+### WSL / Ubuntu setup (optional)
+
+If you prefer running inside WSL on Windows, here's a concise setup for WSL2 + Ubuntu 22.04:
+
+- Install WSL2 and Ubuntu 22.04:
+
+```powershell
+wsl --install -d Ubuntu-22.04
+# Restart if prompted, then open the Ubuntu terminal and create your user.
+```
+
+- Install system dependencies in Ubuntu:
+
+```bash
+sudo apt update && sudo apt install -y ffmpeg build-essential libssl-dev libffi-dev python3.11 python3.11-venv python3-pip curl
+```
+
+- Install `uv` (Astral) and load its env.
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+source ~/.local/bin/env
+```
+
+- Clone and run the project in WSL (example):
+
+```bash
+# if repo is on E: drive in Windows, WSL mounts it under /mnt/e
+cd /mnt/e/voice/voice-assistant/pipecat-quickstart
+uv sync
+uv run hello_bot.py
+```
+
+From Windows PowerShell you can use the helper `run_bot.ps1` which will invoke WSL for you.
+
 #### AI Service API keys
 
 You'll need API keys from three services:
@@ -48,6 +83,8 @@ Navigate to the quickstart directory and set up your environment.
    DEEPGRAM_API_KEY=your_deepgram_api_key
    OPENAI_API_KEY=your_openai_api_key
    CARTESIA_API_KEY=your_cartesia_api_key
+   ELEVENLABS_API_KEY=your_elevenlabs_api_key
+   ELEVENLABS_VOICE_ID=21m00Tcm4TlvDq8ikWAM  # default Rachel
    ```
 
 3. Set up a virtual environment and install dependencies
@@ -59,7 +96,7 @@ Navigate to the quickstart directory and set up your environment.
 ### Run your bot locally
 
 ```bash
-uv run bot.py
+uv run hello_bot.py
 ```
 
 **Open http://localhost:7860 in your browser** and click `Connect` to start talking to your bot.
@@ -171,3 +208,11 @@ pipecat cloud deploy
 - **Browser permissions**: Allow microphone access when prompted
 - **Connection issues**: Try a different browser or check VPN/firewall settings
 - **Audio issues**: Verify microphone and speakers are working and not muted
+
+- **Voice not found / ElevenLabs**: If ElevenLabs reports `voice not found` or you receive TTS errors, use the `scripts/check_elevenvoices.py` script to list available voices and voice IDs, or add the voice to "My Voices" in ElevenLabs UI. Example:
+
+```bash
+python scripts/check_elevenvoices.py
+```
+
+If ElevenLabs is not configured properly, the quickstart will attempt to fallback to Cartesia TTS (if `CARTESIA_API_KEY` is set) or will log an ErrorFrame.
