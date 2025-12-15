@@ -144,7 +144,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # Text-to-Speech (ElevenLabs) - configured to speak complete responses
     tts = ElevenLabsTTSService(
         api_key=os.getenv("ELEVENLABS_API_KEY"),
-        voice_id=os.getenv("ELEVENLABS_VOICE_ID", "Xtbu4DbP3EiktnAlnmbX"),  # Rachel - default free voice
+        voice_id=os.getenv("ELEVENLABS_VOICE_ID", "YxnPWTfW4b3oTWHnl28P"),
         model_id=os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2"),
     )
 
