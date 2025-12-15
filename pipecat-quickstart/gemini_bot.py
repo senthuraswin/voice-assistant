@@ -50,7 +50,11 @@ class GeminiProcessor(FrameProcessor):
             user_text = frame.text.strip()
             logger.info(f"🎤 User said: {user_text}")
 
-            reply = await asyncio.to_thread(self._call_gemini, user_text)
+            try:
+                reply = await asyncio.to_thread(self._call_gemini, user_text)
+            except Exception as e:
+                logger.error(f"Exception in _call_gemini: {e}", exc_info=True)
+                reply = None
 
             if reply is None:
                 reply = "Sorry, I couldn't get a reply from the model."
@@ -113,9 +117,18 @@ class GeminiProcessor(FrameProcessor):
                 contents=text,
             )
             
-            logger.debug(f"Response: {response.text[:200]}")
-            
-            return response.text
+            # Check if response has text
+            if hasattr(response, 'text') and response.text:
+                logger.debug(f"Response: {response.text[:200]}")
+                return response.text
+            else:
+                # Handle cases where response doesn't have text (blocked, error, etc.)
+                logger.error(f"No text in response. Response object: {response}")
+                if hasattr(response, 'prompt_feedback'):
+                    logger.error(f"Prompt feedback: {response.prompt_feedback}")
+                if hasattr(response, 'candidates') and response.candidates:
+                    logger.error(f"Candidates: {response.candidates[0]}")
+                return "I'm sorry, I couldn't generate a response."
 
         except Exception as e:
             logger.error(f"Error calling Gemini API: {e}", exc_info=True)
@@ -131,7 +144,7 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # Text-to-Speech (ElevenLabs) - configured to speak complete responses
     tts = ElevenLabsTTSService(
         api_key=os.getenv("ELEVENLABS_API_KEY"),
-        voice_id=os.getenv("ELEVENLABS_VOICE_ID", "21m00Tcm4TlvDq8ikWAM"),  # Rachel - default free voice
+        voice_id=os.getenv("ELEVENLABS_VOICE_ID", "Xtbu4DbP3EiktnAlnmbX"),  # Rachel - default free voice
         model_id=os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2"),
     )
 
