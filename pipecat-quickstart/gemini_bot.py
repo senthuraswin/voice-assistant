@@ -69,18 +69,30 @@ class GeminiProcessor(FrameProcessor):
                 reply = re.sub(r'`(.*?)`', r'\1', reply)        # Remove `code` formatting
                 
                 # Replace newlines and bullet points with natural speech pauses
-                reply = re.sub(r'\n\s*\*\s+', '. ', reply)      # Convert bullet points to sentences
-                reply = re.sub(r'\n+', '. ', reply)             # Replace newlines with period+space
-                reply = re.sub(r'\.\.+', '.', reply)            # Fix multiple periods
+                reply = re.sub(r'\n\s*\*\s+', ', ', reply)      # Convert bullet points to commas
+                reply = re.sub(r'\n+', ', ', reply)             # Replace newlines with commas
+                reply = re.sub(r',\s*,+', ',', reply)           # Fix multiple commas
                 reply = re.sub(r'\s+', ' ', reply)              # Normalize whitespace
                 reply = reply.strip()
                 
-                # Keep response reasonable but not too short (2-3 sentences)
-                sentences = re.split(r'(?<=[.!?])\s+', reply)
-                if len(sentences) > 3:
-                    reply = ' '.join(sentences[:3])
-                    if not reply.endswith(('.', '!', '?')):
-                        reply += '.'
+                # CRITICAL FIX: Replace ALL sentence-ending punctuation (. ! ?) with commas
+                # except the very last one, to prevent ElevenLabs from splitting
+                # This forces it to generate one continuous audio stream
+                
+                # Split by sentence ending punctuation while keeping the punctuation
+                parts = re.split(r'([.!?])\s+', reply)
+                
+                if len(parts) > 2:  # If we have multiple sentences
+                    # Rebuild: replace all middle sentence endings with commas
+                    result = []
+                    for i in range(0, len(parts) - 2, 2):  # Process all but the last sentence
+                        result.append(parts[i])  # Add text
+                        result.append(',')  # Replace punctuation with comma
+                        result.append(' ')  # Add space
+                    # Add the final sentence with its original punctuation
+                    result.append(parts[-2] if len(parts) >= 2 else '')
+                    result.append(parts[-1] if len(parts) >= 1 else '')
+                    reply = ''.join(result).strip()
 
             logger.info(f"🤖 Gemini replied: {reply}")
             logger.debug(f"Sending to TTS: '{reply}' (length: {len(reply)})")
@@ -89,14 +101,7 @@ class GeminiProcessor(FrameProcessor):
             await self.push_frame(frame)
 
     def _call_gemini(self, text: str) -> str | None:
-        """Synchronous helper that calls the Google Gemini API using the official SDK.
-
-        Environment variables used:
-        - GEMINI_API_KEY: Google AI Studio API key
-        - GEMINI_MODEL: Model name (default: gemini-2.5-flash)
-
-        Uses the official google-genai Python SDK.
-        """
+        
         api_key = os.getenv("GEMINI_API_KEY")
         model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
@@ -146,6 +151,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
         api_key=os.getenv("ELEVENLABS_API_KEY"),
         voice_id=os.getenv("ELEVENLABS_VOICE_ID", "Xtbu4DbP3EiktnAlnmbX"),  # Rachel - default free voice
         model_id=os.getenv("ELEVENLABS_MODEL_ID", "eleven_turbo_v2"),
+        # Disable sentence splitting to ensure full response is spoken
+        params=ElevenLabsTTSService.InputParams(
+            optimize_streaming_latency=4,  # Higher value = less aggressive splitting
+            language="en",
+        ),
     )
 
     # Gemini processor
