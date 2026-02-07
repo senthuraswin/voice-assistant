@@ -29,7 +29,7 @@ from pipecat.processors.frame_processor import FrameProcessor
 from pipecat.processors.frameworks.rtvi import RTVIConfig, RTVIObserver, RTVIProcessor
 from pipecat.runner.types import RunnerArguments
 from pipecat.runner.utils import create_transport
-from pipecat.services.cartesia.tts import CartesiaTTSService
+from pipecat.services.elevenlabs import ElevenLabsTTSService
 from pipecat.services.deepgram.stt import DeepgramSTTService
 from pipecat.transports.base_transport import BaseTransport, TransportParams
 from pipecat.transports.daily.transport import DailyParams
@@ -66,10 +66,11 @@ async def run_bot(transport: BaseTransport, runner_args: RunnerArguments):
     # Speech-to-Text (Deepgram)
     stt = DeepgramSTTService(api_key=os.getenv("DEEPGRAM_API_KEY"))
 
-    # Text-to-Speech (Cartesia)
-    tts = CartesiaTTSService(
-        api_key=os.getenv("CARTESIA_API_KEY"),
-        voice_id="71a7ad14-091c-4e8e-a314-022ece01c121",  # British Reading Lady
+    # Text-to-Speech (ElevenLabs)
+    tts = ElevenLabsTTSService(
+        api_key=os.getenv("ELEVENLABS_API_KEY"),
+        voice_id="Xtbu4DbP3EiktnAlnmbX",  # Rachel - default free voice
+        model_id="eleven_turbo_v2" # Faster model for better streaming
     )
 
     # Our simple hello logic - NO OpenAI needed!
